@@ -17,7 +17,7 @@ from .security import hash_password, verify_password, token_digest
 
 # Application startup never performs DDL; run `python -m app.migrate` first.
 app = FastAPI(title="Hifdh Planner API", version="0.1.0")
-origins = [s.strip() for s in os.getenv("CORS_ORIGINS", "http://localhost:5173").split(",") if s.strip()]
+origins = [s.strip() for s in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if s.strip()]
 if "*" in origins:
     raise ValueError("Use explicit frontend origins")
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "PATCH", "DELETE"], allow_headers=["Authorization", "Content-Type", "Idempotency-Key"])

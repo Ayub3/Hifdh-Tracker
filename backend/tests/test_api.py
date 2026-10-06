@@ -102,6 +102,8 @@ def test_expired_credentials_and_cors(setup):
     assert client.get("/api/v1/plans", headers=headers).status_code == 401
     allowed = client.options("/api/v1/plans", headers={"Origin": "http://localhost:5173", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "Authorization,Idempotency-Key"})
     assert allowed.status_code == 200
+    loopback = client.options("/api/v1/auth/register", headers={"Origin": "http://127.0.0.1:5173", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "Content-Type"})
+    assert loopback.status_code == 200
     denied = client.options("/api/v1/plans", headers={"Origin": "https://untrusted.example", "Access-Control-Request-Method": "POST"})
     assert denied.status_code == 400
 
