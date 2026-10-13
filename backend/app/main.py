@@ -1,6 +1,7 @@
 import json
 import os
 import secrets
+from contextlib import asynccontextmanager
 from datetime import timedelta, timezone
 from uuid import uuid4
 from urllib.parse import urlparse
@@ -11,12 +12,17 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from .database import SessionLocal, User, Token, Plan, StudySession, Share, Outbox, now
+from .database import Base, SessionLocal, User, Token, Plan, StudySession, Share, Outbox, engine, now
 from .schemas import Credentials, PlanInput, PlanOutput, SessionInput, SessionOutput
 from .security import hash_password, verify_password, token_digest
 
-# Application startup never performs DDL; run `python -m app.migrate` first.
-app = FastAPI(title="Hifdh Planner API", version="0.1.0")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    if os.getenv("AUTO_CREATE_SCHEMA", "").lower() in {"1", "true", "yes"}:
+        Base.metadata.create_all(bind=engine)
+    yield
+
+app = FastAPI(title="Hifdh Planner API", version="0.1.0", lifespan=lifespan)
 origins = [s.strip() for s in os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",") if s.strip()]
 if "*" in origins:
     raise ValueError("Use explicit frontend origins")

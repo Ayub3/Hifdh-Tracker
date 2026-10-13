@@ -1,10 +1,11 @@
 from datetime import date
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select, func
+from sqlalchemy import select, func, inspect
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from sqlalchemy import create_engine
+import app.main as main_module
 from app.main import app, db
 from app.database import Base, Outbox, StudySession
 
@@ -27,6 +28,14 @@ def auth(client, email="student@example.com"):
     assert client.post("/api/v1/auth/register", json=credentials).status_code == 201
     token = client.post("/api/v1/auth/login", json=credentials).json()["access_token"]
     return {"Authorization": "Bearer " + token}
+
+def test_local_schema_bootstrap(monkeypatch):
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    monkeypatch.setattr(main_module, "engine", engine)
+    monkeypatch.setenv("AUTO_CREATE_SCHEMA", "true")
+    with TestClient(app):
+        assert inspect(engine).has_table("users")
+    engine.dispose()
 
 def plan(client, headers):
     response = client.post("/api/v1/plans", headers=headers, json={"title": "Daily revision", "daily_minutes": 30})

@@ -37,6 +37,16 @@ Open the URL Vite prints, normally `http://localhost:5173`. Create an account in
 
 The API permits the default Vite origin. If you change the frontend port or hostname, set `CORS_ORIGINS` for the backend to include that exact origin and set `FRONTEND_URL` to the frontend base URL.
 
+### Run the backend with Docker Compose
+
+From the project root, start the backend container. Local Compose enables automatic initial schema creation during FastAPI startup:
+
+```sh
+docker-compose up
+```
+
+If the image needs rebuilding after Dockerfile or dependency changes, run `docker-compose up --build`. In another terminal, run the frontend as above and open `http://localhost:5173`. It calls the containerized API at `http://localhost:8000`. Compose stores the local SQLite database in a named volume; `docker-compose down` keeps that data, while `docker-compose down --volumes` deletes it. The modern equivalent command is `docker compose` (with a space).
+
 ## Run backend tests
 
 ```sh
