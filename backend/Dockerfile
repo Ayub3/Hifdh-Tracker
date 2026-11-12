@@ -14,7 +14,6 @@ RUN groupadd --gid 65532 app \
 	&& mkdir -p /data \
 	&& chown app:app /data
 
-COPY --chown=app:app app ./app
 USER app
 
 EXPOSE 8000
