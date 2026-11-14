@@ -2,17 +2,6 @@ from datetime import date
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-class Credentials(BaseModel):
-    email: str = Field(min_length=3, max_length=254)
-    password: str = Field(min_length=12, max_length=128)
-    @field_validator("email")
-    @classmethod
-    def normalise_email(cls, value):
-        value = value.strip().lower()
-        if value.count("@") != 1 or not all(value.split("@")) or any(c.isspace() for c in value):
-            raise ValueError("Invalid email")
-        return value
-
 class PlanInput(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     daily_minutes: int = Field(ge=5, le=480)

@@ -1,22 +1,20 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowUpRight,
   BookOpen,
   CalendarDays,
   Check,
   ChevronDown,
-  CircleHelp,
   Clock3,
   Feather,
   Flame,
-  LogOut,
   Plus,
   RotateCcw,
   Sparkles,
   Target,
   X,
 } from 'lucide-react';
-import { api } from './api.js';
+import { api, listAll } from './api.js';
 
 const emptyPlanForm = { title: '', daily_minutes: 30 };
 const today = (() => {
@@ -31,71 +29,6 @@ function localDate(value) {
 
 function dateLabel(value, options = { month: 'short', day: 'numeric' }) {
   return localDate(value).toLocaleDateString(undefined, options);
-}
-
-function AuthScreen({ onAuthenticated }) {
-  const [mode, setMode] = useState('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  async function submit(event) {
-    event.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      if (mode === 'register') {
-        await api('/api/v1/auth/register', {
-          method: 'POST',
-          body: JSON.stringify({ email, password }),
-        });
-      }
-      const result = await api('/api/v1/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      });
-      onAuthenticated(result.access_token, email.trim().toLowerCase());
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <main className="auth-page">
-      <section className="auth-story">
-        <div className="brand-lockup"><span className="brand-mark"><Feather size={20} /></span><span>Hifdh<span className="brand-light">Tracker</span></span></div>
-        <div className="story-copy">
-          <span className="eyebrow"><Sparkles size={14} /> A little, every day</span>
-          <h1>Make room for what matters.</h1>
-          <p>A calm place to plan your memorisation, keep your rhythm, and notice how far you have come.</p>
-          <div className="story-note"><div className="note-icon"><BookOpen size={18} /></div><div><strong>Small steps add up</strong><span>Your progress, gathered in one place.</span></div><ArrowUpRight size={17} /></div>
-        </div>
-        <div className="story-footer">A thoughtful companion for your hifdh journey</div>
-      </section>
-
-      <section className="auth-panel">
-        <div className="auth-mobile-brand"><span className="brand-mark"><Feather size={20} /></span><span>Hifdh<span className="brand-light">Tracker</span></span></div>
-        <div className="auth-card">
-          <span className="eyebrow">YOUR PERSONAL SPACE</span>
-          <h2>{mode === 'login' ? 'Welcome back' : 'Begin your journey'}</h2>
-          <p className="auth-subtitle">{mode === 'login' ? 'Sign in to pick up where you left off.' : 'Create an account to start tracking your progress.'}</p>
-          <form onSubmit={submit} className="auth-form">
-            <label htmlFor="email">Email address</label>
-            <input id="email" type="email" autoComplete="email" required minLength={3} maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" />
-            <div className="password-label"><label htmlFor="password">Password</label>{mode === 'register' && <span>At least 12 characters</span>}</div>
-            <input id="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={12} maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="12 characters or more" />
-            {error && <p className="form-error" role="alert">{error}</p>}
-            <button className="button button-primary auth-submit" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}<ArrowUpRight size={17} /></button>
-          </form>
-          <p className="auth-switch">{mode === 'login' ? 'New here?' : 'Already have an account?'} <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}>{mode === 'login' ? 'Create an account' : 'Sign in'}</button></p>
-          <p className="auth-footnote"><CircleHelp size={14} /> Your study history is private to your account.</p>
-        </div>
-      </section>
-    </main>
-  );
 }
 
 function Modal({ title, subtitle, onClose, children }) {
@@ -118,13 +51,15 @@ function Modal({ title, subtitle, onClose, children }) {
 }
 
 function App() {
-  const [token, setToken] = useState(() => localStorage.getItem('hifdh-token') || '');
-  const [email, setEmail] = useState(() => localStorage.getItem('hifdh-email') || '');
   const [plans, setPlans] = useState([]);
-  const [selectedId, setSelectedId] = useState('');
   const [sessions, setSessions] = useState([]);
   const [progress, setProgress] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [refresh, setRefresh] = useState(0);
+  const savingRef = useRef(false);
+  const sessionRequest = useRef(null);
+  const [selectedId, setSelectedId] = useState('');
   const [modal, setModal] = useState('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -132,50 +67,37 @@ function App() {
   const [sessionForm, setSessionForm] = useState({ kind: 'memorisation', minutes: 20, verses: 5, studied_on: today });
 
   const selectedPlan = plans.find((plan) => plan.id === selectedId) || plans[0];
-  const username = email.split('@')[0] || 'there';
   const totals = useMemo(() => progress.reduce((sum, item) => ({
     sessions: sum.sessions + item.sessions,
     minutes: sum.minutes + item.minutes,
     verses: sum.verses + item.verses,
   }), { sessions: 0, minutes: 0, verses: 0 }), [progress]);
 
-  async function loadPlans(authToken, preferredId) {
-    setError('');
-    try {
-      const items = await api('/api/v1/plans', { token: authToken });
-      setPlans(items);
-      setSelectedId((current) => preferredId || (items.some((plan) => plan.id === current) ? current : items[0]?.id || ''));
-    } catch (requestError) {
-      setError(requestError.message);
-    }
-  }
-
   useEffect(() => {
-    if (!token) return;
+    let active = true;
     setLoading(true);
-    loadPlans(token).finally(() => setLoading(false));
-  }, [token]);
+    setError('');
+    listAll('/api/v1/plans').then((items) => {
+      if (active) setPlans(items);
+    }).catch((err) => { if (active) setError(err.message); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [refresh]);
 
   useEffect(() => {
-    if (!token || !selectedPlan) {
-      setSessions([]);
-      setProgress([]);
-      return;
+    let active = true;
+    setSessions([]);
+    setProgress([]);
+    if (selectedPlan) {
+      Promise.all([
+        listAll(`/api/v1/plans/${selectedPlan.id}/sessions`),
+        api(`/api/v1/plans/${selectedPlan.id}/progress`),
+      ]).then(([items, result]) => {
+        if (active) { setSessions(items); setProgress(result.totals); }
+      }).catch((err) => { if (active) setError(err.message); });
     }
-    let cancelled = false;
-    Promise.all([
-      api(`/api/v1/plans/${selectedPlan.id}/sessions`, { token }),
-      api(`/api/v1/plans/${selectedPlan.id}/progress`, { token }),
-    ]).then(([sessionItems, result]) => {
-      if (!cancelled) {
-        setSessions(sessionItems);
-        setProgress(result.totals);
-      }
-    }).catch((requestError) => {
-      if (!cancelled) setError(requestError.message);
-    });
-    return () => { cancelled = true; };
-  }, [selectedPlan?.id, token]);
+    return () => { active = false; };
+  }, [selectedPlan?.id, refresh]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -183,54 +105,46 @@ function App() {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  function authenticate(authToken, userEmail) {
-    localStorage.setItem('hifdh-token', authToken);
-    localStorage.setItem('hifdh-email', userEmail);
-    setEmail(userEmail);
-    setToken(authToken);
-  }
-
-  async function logout() {
-    try { await api('/api/v1/auth/logout', { method: 'DELETE', token }); } catch { /* Expired sessions are cleared locally too. */ }
-    localStorage.removeItem('hifdh-token');
-    localStorage.removeItem('hifdh-email');
-    setToken('');
-    setPlans([]);
-    setSelectedId('');
-  }
-
   async function createPlan(event) {
     event.preventDefault();
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    setError('');
     try {
-      const plan = await api('/api/v1/plans', { method: 'POST', token, body: JSON.stringify({ ...planForm, daily_minutes: Number(planForm.daily_minutes) }) });
+      const title = planForm.title.trim();
+      if (!title) throw new Error('Please enter a plan name.');
+      const plan = await api('/api/v1/plans', { method: 'POST', body: JSON.stringify({ title, daily_minutes: Number(planForm.daily_minutes) }) });
       setPlans((items) => [...items, plan]);
       setSelectedId(plan.id);
       setPlanForm(emptyPlanForm);
       setModal('');
       setNotice('Your plan is ready.');
-    } catch (requestError) { setError(requestError.message); }
+    } catch (err) { setError(err.message); }
+    finally { savingRef.current = false; setSaving(false); }
   }
 
   async function recordSession(event) {
     event.preventDefault();
-    if (!selectedPlan) return;
+    if (!selectedPlan || savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    setError('');
+    const path = `/api/v1/plans/${selectedPlan.id}/sessions`;
+    const body = JSON.stringify({ ...sessionForm, minutes: Number(sessionForm.minutes), verses: Number(sessionForm.verses) });
+    // Retain the same key when retrying an unchanged request after a lost response.
+    if (sessionRequest.current?.body !== body || sessionRequest.current?.path !== path) {
+      sessionRequest.current = { body, path, key: crypto.randomUUID() };
+    }
     try {
-      await api(`/api/v1/plans/${selectedPlan.id}/sessions`, {
-        method: 'POST',
-        token,
-        headers: { 'Idempotency-Key': crypto.randomUUID() },
-        body: JSON.stringify({ ...sessionForm, minutes: Number(sessionForm.minutes), verses: Number(sessionForm.verses) }),
-      });
-      const [sessionItems, result] = await Promise.all([
-        api(`/api/v1/plans/${selectedPlan.id}/sessions`, { token }),
-        api(`/api/v1/plans/${selectedPlan.id}/progress`, { token }),
-      ]);
-      setSessions(sessionItems);
-      setProgress(result.totals);
+      await api(path, { method: 'POST', body, headers: { 'Idempotency-Key': sessionRequest.current.key } });
+      sessionRequest.current = null;
       setSessionForm({ kind: 'memorisation', minutes: 20, verses: 5, studied_on: today });
       setModal('');
       setNotice('Study session added. Well done.');
-    } catch (requestError) { setError(requestError.message); }
+      setRefresh((value) => value + 1);
+    } catch (err) { setError(err.message); }
+    finally { savingRef.current = false; setSaving(false); }
   }
 
   const lastSevenDays = useMemo(() => {
@@ -249,8 +163,6 @@ function App() {
   }, [sessions]);
   const maxMinutes = Math.max(30, ...lastSevenDays.map((day) => day.minutes));
 
-  if (!token) return <AuthScreen onAuthenticated={authenticate} />;
-
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -258,23 +170,23 @@ function App() {
         <div className="sidebar-section-label">YOUR WORKSPACE <button type="button" className="icon-button tiny" title="Create a memorisation plan" onClick={() => setModal('plan')}><Plus size={16} /></button></div>
         <div className="plan-nav">
           {plans.map((plan) => <button className={`plan-link ${selectedPlan?.id === plan.id ? 'selected' : ''}`} type="button" key={plan.id} onClick={() => setSelectedId(plan.id)}><span className="plan-dot" /><span>{plan.title}</span>{selectedPlan?.id === plan.id && <ChevronDown className="plan-chevron" size={14} />}</button>)}
-          {plans.length === 0 && !loading && <p className="sidebar-empty">Your plans will appear here.</p>}
+          {plans.length === 0 && <p className="sidebar-empty">Your plans will appear here.</p>}
         </div>
         <button className="new-plan-link" type="button" onClick={() => setModal('plan')}><Plus size={16} /> New plan</button>
         <div className="sidebar-bottom">
           <div className="sidebar-quote"><span className="quote-mark">“</span><p>The best deeds are those done consistently, even if they are few.</p><span className="quote-source">SAHIH AL-BUKHARI</span></div>
-          <div className="user-row"><span className="avatar">{username.slice(0, 1).toUpperCase()}</span><span className="user-meta"><strong>{username}</strong><span>Personal account</span></span><button type="button" className="icon-button logout-button" aria-label="Sign out" title="Sign out" onClick={logout}><LogOut size={16} /></button></div>
+          <div className="user-row"><span className="avatar"><BookOpen size={18} /></span><span className="user-meta"><strong>My workspace</strong><span>Anonymous workspace</span></span></div>
         </div>
       </aside>
 
       <main className="main-area" id="home">
-        <header className="topbar"><div className="breadcrumb"><span>My workspace</span><span className="breadcrumb-divider">/</span><strong>{selectedPlan?.title || 'Overview'}</strong></div><div className="topbar-right"><span className="today-label"><CalendarDays size={15} />{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span><span className="avatar small-avatar">{username.slice(0, 1).toUpperCase()}</span></div></header>
+        <header className="topbar"><div className="breadcrumb"><span>My workspace</span><span className="breadcrumb-divider">/</span><strong>{selectedPlan?.title || 'Overview'}</strong></div><div className="topbar-right"><span className="today-label"><CalendarDays size={15} />{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</span><span className="avatar small-avatar"><BookOpen size={16} /></span></div></header>
 
         <div className="content-area">
-          <div className="welcome-row"><div><span className="eyebrow"><span className="eyebrow-dot" /> YOUR MEMORISATION SPACE</span><h1>Assalamu alaikum, {username}</h1><p>A steady rhythm is built one session at a time.</p></div>{selectedPlan && <button className="button button-primary" type="button" onClick={() => setModal('session')}><Plus size={17} /> Log a session</button>}</div>
+          <div className="welcome-row"><div><span className="eyebrow"><span className="eyebrow-dot" /> YOUR MEMORISATION SPACE</span><h1>Assalamu alaikum</h1><p>No sign-in needed. Keep this browser’s site data to retain access to your workspace.</p></div>{selectedPlan && <button className="button button-primary" type="button" onClick={() => setModal('session')}><Plus size={17} /> Log a session</button>}</div>
 
-          {error && <div className="alert" role="alert"><span>{error}</span><button type="button" onClick={() => setError('')} aria-label="Dismiss error"><X size={17} /></button></div>}
-          {loading ? <div className="loading-state"><span className="spinner" />Loading your plans…</div> : !selectedPlan ? (
+          {error && <div className="alert" role="alert"><span>{error}</span><button type="button" onClick={() => setRefresh((value) => value + 1)}>Retry</button><button type="button" onClick={() => setError('')} aria-label="Dismiss error"><X size={17} /></button></div>}
+          {loading ? <div className="loading-state">Loading your plans…</div> : !selectedPlan ? (
             <section className="empty-state"><div className="empty-illustration"><BookOpen size={28} /><span><Sparkles size={15} /></span></div><span className="eyebrow">A FRESH PAGE</span><h2>Start with one intention.</h2><p>Create a plan for the portion you are working on and set a daily goal that feels realistic.</p><button className="button button-primary" type="button" onClick={() => setModal('plan')}><Plus size={17} /> Create your first plan</button></section>
           ) : (
             <>
@@ -307,8 +219,8 @@ function App() {
         </div>
       </main>
 
-      {modal === 'plan' && <Modal title="Create a plan" subtitle="Choose a focus and a daily target that works for you." onClose={() => setModal('')}><form className="modal-form" onSubmit={createPlan}><label htmlFor="plan-title">Plan name</label><input id="plan-title" autoFocus required minLength={1} maxLength={120} value={planForm.title} onChange={(event) => setPlanForm({ ...planForm, title: event.target.value })} placeholder="e.g. Juz Amma revision" /><label htmlFor="daily-minutes">Daily goal</label><div className="input-with-unit"><input id="daily-minutes" type="number" required min={5} max={480} value={planForm.daily_minutes} onChange={(event) => setPlanForm({ ...planForm, daily_minutes: event.target.value })} /><span>minutes per day</span></div><p className="field-hint">Set a goal between 5 and 480 minutes.</p><button className="button button-primary modal-submit" type="submit"><Plus size={17} /> Create plan</button></form></Modal>}
-      {modal === 'session' && <Modal title="Log a study session" subtitle={`Record today's effort for ${selectedPlan?.title || 'your plan'}.`} onClose={() => setModal('')}><form className="modal-form" onSubmit={recordSession}><label>Session type</label><div className="segmented-control"><button type="button" className={sessionForm.kind === 'memorisation' ? 'active' : ''} onClick={() => setSessionForm({ ...sessionForm, kind: 'memorisation' })}><ArrowUpRight size={15} /> Memorisation</button><button type="button" className={sessionForm.kind === 'revision' ? 'active' : ''} onClick={() => setSessionForm({ ...sessionForm, kind: 'revision' })}><RotateCcw size={15} /> Revision</button></div><div className="form-columns"><div><label htmlFor="session-minutes">Time spent</label><div className="input-with-unit"><input id="session-minutes" type="number" required min={1} max={480} value={sessionForm.minutes} onChange={(event) => setSessionForm({ ...sessionForm, minutes: event.target.value })} /><span>minutes</span></div></div><div><label htmlFor="session-verses">Verses</label><div className="input-with-unit"><input id="session-verses" type="number" required min={1} max={1000} value={sessionForm.verses} onChange={(event) => setSessionForm({ ...sessionForm, verses: event.target.value })} /><span>covered</span></div></div></div><label htmlFor="session-date">Study date</label><input id="session-date" type="date" required max={today} value={sessionForm.studied_on} onChange={(event) => setSessionForm({ ...sessionForm, studied_on: event.target.value })} /><button className="button button-primary modal-submit" type="submit"><Check size={17} /> Save session</button></form></Modal>}
+      {modal === 'plan' && <Modal title="Create a plan" subtitle="Choose a focus and a daily target that works for you." onClose={() => setModal('')}><form className="modal-form" onSubmit={createPlan}>{error && <p className="form-error" role="alert">{error}</p>}<label htmlFor="plan-title">Plan name</label><input id="plan-title" autoFocus required minLength={1} maxLength={120} value={planForm.title} onChange={(event) => setPlanForm({ ...planForm, title: event.target.value })} placeholder="e.g. Juz Amma revision" /><label htmlFor="daily-minutes">Daily goal</label><div className="input-with-unit"><input id="daily-minutes" type="number" required min={5} max={480} value={planForm.daily_minutes} onChange={(event) => setPlanForm({ ...planForm, daily_minutes: event.target.value })} /><span>minutes per day</span></div><p className="field-hint">Set a goal between 5 and 480 minutes.</p><button className="button button-primary modal-submit" type="submit" disabled={saving}><Plus size={17} /> Create plan</button></form></Modal>}
+      {modal === 'session' && <Modal title="Log a study session" subtitle={`Record today's effort for ${selectedPlan?.title || 'your plan'}.`} onClose={() => setModal('')}><form className="modal-form" onSubmit={recordSession}>{error && <p className="form-error" role="alert">{error}</p>}<label>Session type</label><div className="segmented-control"><button type="button" className={sessionForm.kind === 'memorisation' ? 'active' : ''} onClick={() => setSessionForm({ ...sessionForm, kind: 'memorisation' })}><ArrowUpRight size={15} /> Memorisation</button><button type="button" className={sessionForm.kind === 'revision' ? 'active' : ''} onClick={() => setSessionForm({ ...sessionForm, kind: 'revision' })}><RotateCcw size={15} /> Revision</button></div><div className="form-columns"><div><label htmlFor="session-minutes">Time spent</label><div className="input-with-unit"><input id="session-minutes" type="number" required min={1} max={480} value={sessionForm.minutes} onChange={(event) => setSessionForm({ ...sessionForm, minutes: event.target.value })} /><span>minutes</span></div></div><div><label htmlFor="session-verses">Verses</label><div className="input-with-unit"><input id="session-verses" type="number" required min={1} max={1000} value={sessionForm.verses} onChange={(event) => setSessionForm({ ...sessionForm, verses: event.target.value })} /><span>covered</span></div></div></div><label htmlFor="session-date">Study date</label><input id="session-date" type="date" required max={today} value={sessionForm.studied_on} onChange={(event) => setSessionForm({ ...sessionForm, studied_on: event.target.value })} /><button className="button button-primary modal-submit" type="submit" disabled={saving}><Check size={17} /> Save session</button></form></Modal>}
       {notice && <div className="toast" role="status"><span className="toast-check"><Check size={14} /></span>{notice}<button type="button" aria-label="Dismiss notification" onClick={() => setNotice('')}><X size={15} /></button></div>}
     </div>
   );

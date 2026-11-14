@@ -7,6 +7,7 @@ FROM python:3.11-slim-bookworm
 
 WORKDIR /app
 COPY --from=builder /install /usr/local
+COPY --chown=65532:65532 app/ ./app/
 
 # Create a non-root app user and give it permission to write the SQLite volume.
 RUN groupadd --gid 65532 app \

@@ -11,32 +11,20 @@ def now():
 class Base(DeclarativeBase):
     pass
 
-class User(Base):
-    __tablename__ = "users"
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    email: Mapped[str] = mapped_column(String(254), unique=True)
-    password: Mapped[str] = mapped_column(Text)
-
-class Token(Base):
-    __tablename__ = "tokens"
-    digest: Mapped[str] = mapped_column(String(64), primary_key=True)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
-    expires: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-
 class Plan(Base):
-    __tablename__ = "plans"
+    __tablename__ = "anonymous_plans"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    workspace_id: Mapped[str] = mapped_column(String(64), index=True)
     title: Mapped[str] = mapped_column(String(120))
     daily_minutes: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 class StudySession(Base):
-    __tablename__ = "study_sessions"
-    __table_args__ = (UniqueConstraint("user_id", "request_key"),)
+    __tablename__ = "anonymous_study_sessions"
+    __table_args__ = (UniqueConstraint("workspace_id", "request_key"),)
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
-    plan_id: Mapped[str] = mapped_column(ForeignKey("plans.id"), index=True)
+    workspace_id: Mapped[str] = mapped_column(String(64))
+    plan_id: Mapped[str] = mapped_column(ForeignKey("anonymous_plans.id"), index=True)
     request_key: Mapped[str] = mapped_column(String(100))
     kind: Mapped[str] = mapped_column(String(20))
     minutes: Mapped[int] = mapped_column(Integer)
@@ -44,9 +32,9 @@ class StudySession(Base):
     studied_on: Mapped[str] = mapped_column(String(10))
 
 class Share(Base):
-    __tablename__ = "shares"
+    __tablename__ = "anonymous_shares"
     code: Mapped[str] = mapped_column(String(32), primary_key=True)
-    plan_id: Mapped[str] = mapped_column(ForeignKey("plans.id"))
+    plan_id: Mapped[str] = mapped_column(ForeignKey("anonymous_plans.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     revoked: Mapped[int] = mapped_column(Integer, default=0)
 

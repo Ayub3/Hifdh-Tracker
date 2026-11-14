@@ -163,10 +163,10 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 .modal-heading h2 { margin: 7px 0 4px; color: #27352c; font: 700 20px var(--font-display); }
 .modal-heading p { margin: 0; color: #849087; font-size: 11px; }
 .modal-form { display: grid; gap: 9px; }
-.modal-form label, .auth-form label { color: #526057; font-size: 11px; font-weight: 700; }
-.modal-form input, .auth-form input { width: 100%; min-height: 42px; padding: 0 11px; color: #354139; background: #fff; border: 1px solid #dfe6df; border-radius: 6px; font-size: 12px; }
-.modal-form input::placeholder, .auth-form input::placeholder { color: #b3bcb4; }
-.modal-form input:focus, .auth-form input:focus { outline: 3px solid #dcecdf; border-color: #78a883; }
+.modal-form label { color: #526057; font-size: 11px; font-weight: 700; }
+.modal-form input { width: 100%; min-height: 42px; padding: 0 11px; color: #354139; background: #fff; border: 1px solid #dfe6df; border-radius: 6px; font-size: 12px; }
+.modal-form input::placeholder { color: #b3bcb4; }
+.modal-form input:focus { outline: 3px solid #dcecdf; border-color: #78a883; }
 .input-with-unit { position: relative; }
 .input-with-unit input { padding-right: 105px; }
 .input-with-unit > span { position: absolute; top: 50%; right: 11px; color: #9ba59c; transform: translateY(-50%); font-size: 10px; pointer-events: none; }
@@ -180,42 +180,7 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
 .toast-check { width: 20px; height: 20px; display: grid; place-items: center; color: #245b3b; background: #d5ead8; border-radius: 50%; }
 .toast button { margin-left: 7px; color: #d5e3d8; }
 
-.auth-page { min-height: 100vh; display: grid; grid-template-columns: minmax(350px, .9fr) 1.1fr; background: #fff; }
-.auth-story { position: relative; min-height: 100vh; display: flex; flex-direction: column; padding: 34px 8.5%; overflow: hidden; color: #fff; background: #205d3e; }
-.auth-story::before, .auth-story::after { position: absolute; right: -150px; bottom: -130px; width: 470px; height: 470px; border: 1px solid #ffffff17; border-radius: 50%; content: ''; }
-.auth-story::after { right: -75px; bottom: -55px; width: 320px; height: 320px; }
-.auth-story .brand-lockup { color: #fff; }
-.auth-story .brand-mark { color: #205d3e; background: #d9eadb; }
-.auth-story .brand-light { color: #b5d0bb; }
-.story-copy { position: relative; z-index: 1; width: min(100%, 410px); margin: auto; padding: 30px 0 55px; }
-.story-copy .eyebrow { color: #c4ddc9; }
-.story-copy h1 { max-width: 380px; margin: 19px 0 13px; font: 700 39px/1.18 var(--font-display); letter-spacing: 0; }
-.story-copy > p { max-width: 365px; margin: 0; color: #c5d8c8; font-size: 13px; line-height: 1.8; }
-.story-note { display: flex; align-items: center; gap: 11px; margin-top: 39px; padding: 14px 15px; background: #ffffff0e; border: 1px solid #ffffff1a; border-radius: 7px; }
-.note-icon { width: 34px; height: 34px; display: grid; place-items: center; color: #d5e8d7; background: #ffffff18; border-radius: 7px; }
-.story-note > div:nth-child(2) { display: grid; gap: 4px; }
-.story-note strong { color: #f4faf5; font-size: 11px; }
-.story-note span { color: #bdd2c1; font-size: 10px; }
-.story-note > svg { margin-left: auto; color: #c7dfcc; }
-.story-footer { position: relative; z-index: 1; color: #aac5b1; font-size: 10px; }
-.auth-panel { display: grid; place-items: center; padding: 50px 30px; }
-.auth-mobile-brand { display: none; }
-.auth-card { width: min(100%, 360px); animation: arrive .4s ease both; }
-.auth-card > .eyebrow { color: #8e9b90; }
-.auth-card h2 { margin: 12px 0 6px; color: #29372e; font: 700 27px var(--font-display); letter-spacing: 0; }
-.auth-subtitle { margin: 0; color: #879188; font-size: 12px; }
-.auth-form { display: grid; gap: 9px; margin-top: 29px; }
-.auth-form input { min-height: 45px; margin-bottom: 9px; }
-.password-label { display: flex; align-items: center; justify-content: space-between; }
-.password-label span { color: #a1aaa2; font-size: 9px; }
-.auth-submit { min-height: 45px; justify-content: space-between; margin-top: 4px; padding: 0 14px; }
-.auth-submit:disabled { cursor: wait; opacity: .7; }
-.form-error { margin: -1px 0 2px; color: #a2473d; font-size: 11px; line-height: 1.45; }
-.auth-switch { margin: 19px 0 0; color: #8a958d; text-align: center; font-size: 11px; }
-.auth-switch button { padding: 0; color: #2d754a; background: none; border: 0; font-size: inherit; font-weight: 700; }
-.auth-switch button:hover { text-decoration: underline; }
-.auth-footnote { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 45px 0 0; color: #a1aaa3; font-size: 10px; }
-.auth-footnote svg { color: #8c9c90; }
+
 
 @keyframes arrive { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes modal-in { from { opacity: 0; transform: translateY(8px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -305,18 +270,6 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid 
   .empty-state { margin: 55px auto; padding: 0 12px; }
   .toast { right: 12px; bottom: 12px; left: 12px; justify-content: flex-start; }
   .toast button { margin-left: auto; }
-  .auth-page { min-height: 100vh; display: flex; flex-direction: column; background: #f5f7f2; }
-  .auth-story { min-height: auto; padding: 21px 22px 25px; }
-  .auth-story .brand-lockup { font-size: 15px; }
-  .story-copy { margin: 25px 0 0; padding: 0; }
-  .story-copy h1 { max-width: 330px; margin: 10px 0 6px; font-size: 25px; }
-  .story-copy > p { max-width: 380px; font-size: 11px; line-height: 1.6; }
-  .story-note, .story-footer { display: none; }
-  .auth-panel { flex: 1; place-items: start center; padding: 22px 18px 35px; }
-  .auth-card { width: min(100%, 390px); padding: 21px; background: #fff; border: 1px solid #e8ede7; border-radius: 8px; }
-  .auth-card h2 { font-size: 23px; }
-  .auth-form { margin-top: 22px; }
-  .auth-footnote { margin-top: 28px; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
