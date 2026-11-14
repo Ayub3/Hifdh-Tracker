@@ -1,0 +1,15 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      AUTO_CREATE_SCHEMA: "true"
+      DATABASE_URL: sqlite:////data/hifdh.db
+      FRONTEND_URL: http://localhost:5173
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    volumes:
+      - hifdh_data:/data
+
+volumes:
+  hifdh_data:
